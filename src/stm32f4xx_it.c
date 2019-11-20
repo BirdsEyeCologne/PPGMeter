@@ -47,7 +47,7 @@ static uint32_t us100_clock = 0;
 
 /* External variables ---------------------------------------------------------*/
 extern __IO uint32_t ms_cnt;
-extern __IO uint32_t startup_wait;
+extern __IO uint32_t check_rpm;
 extern __IO uint32_t ms_clock;
 extern __IO uint32_t rpm_cnt;
 extern __IO uint32_t uwPeriodValue;
@@ -184,7 +184,12 @@ void TIM4_IRQHandler(void) {
 
 	TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 
-	ms_cnt -= (ms_cnt != 0) ? 1 : 0;
+	if(ms_cnt){
+		ms_cnt--;
+	}
+
+	//ms_cnt -= (ms_cnt != 0) ? 1 : 0;	// same same...
+
 	ms_clock++;
 
 	#ifdef DEBUG_RPM_ENABLE
@@ -213,12 +218,12 @@ void TIM2_IRQHandler(void) {
 	}
 
 	// Debounced low detected.
-	if (rpm_debounced == 0x0000 && rpm_is_low == 0) {
+	if ( (rpm_debounced & BIT_MASK) == 0x0 && rpm_is_low == 0) {
 		rpm_is_low = 1;
 	}
 
 	// Debounced rising edge, after low detected.
-	if (rpm_debounced == 0xFFFF && rpm_is_high == 0 && rpm_is_low == 1) {
+	if ( (rpm_debounced & BIT_MASK) == BIT_MASK && rpm_is_high == 0 && rpm_is_low == 1) {
 		rpm_is_high = 1;
 	}
 
@@ -227,18 +232,20 @@ void TIM2_IRQHandler(void) {
 		rpm_is_low = 0;
 		rpm_is_high = 0;
 		rpm_cnt++;
+
 		#ifdef SAVE_START
-		if (startup_wait == 1) {
+		if (check_rpm == 1) {
 			if (us100_clock < RPM_EM_HALT_US) {
 				em_halt_cnt++;
 				if (em_halt_cnt >= RPM_EM_HALT_CNT) {
 					GPIO_SetBits(GPIOA, GPIO_Pin_1);   // Emergency Halt pin!
-					startup_wait = 0;
+					check_rpm = 0;
 				}
 			}
 		}
 		us100_clock = 0;
 		#endif
+
 	}
 
 }

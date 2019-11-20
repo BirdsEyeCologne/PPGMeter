@@ -8,6 +8,8 @@
 #ifndef GLOBAL_H_
 #define GLOBAL_H_
 
+//#define DEBUG_RPM_ENABLE        // Comment for disable dummy rpm signal on pin PD15.
+
 // Comment to disable.
 #define AUTO_SHUTDOWN 60		// Automatic shutdown of the PPGMeter, in seconds, will happen is no recording is going on.
 
@@ -25,8 +27,6 @@
 //#define IWDG_ENABLE           // Comment for disable intependent watch dog.
 #define IWDG_TIMEOUT_SEC 3      // Timeouts after x seconds. note: max timeout in seconds is limited.
 
-#define DEBUG_RPM_ENABLE        // Comment for disable dummy rpm signal on pin PD15.
-
 #define RPM_SCALE (60/2)        // 2 ignitions per revolution and 60 times per second = 60/2 = 30.
 
 #define UART1_BUFFER_SIZE 64    // BT Com receive buffer.
@@ -42,5 +42,7 @@
 #define FILES_PER_DAY_MAX 240	// Maximum of lights recordable on one day.
 
 #define SD_ERROR_DISABLE 3		// After this many SD-Card errors, the SD-Card gets disabled.
+
+#define BIT_MASK 0x0FFF			// RPM debounce bitmask.
 
 #endif /* GLOBAL_H_ */

@@ -11,7 +11,7 @@ extern volatile uint32_t rpm_cnt;
 
 volatile uint32_t ms_cnt;
 volatile uint32_t ms_clock;
-volatile uint32_t startup_wait;
+volatile uint32_t check_rpm;
 volatile uint8_t time_sync;
 
 // ****************************************************************
@@ -93,6 +93,8 @@ void SysControl::setup() {
 // ****************************************************************
 void SysControl::run() {
 
+	ms_clock = 0; // Just in case ;)
+
 	// Infinite loop. Only way out is some sort of fault (segfault etc.), or
 	// automatic shutdown / standby (if enabled).
 	while (true) {
@@ -102,9 +104,9 @@ void SysControl::run() {
 		m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
 
 		if(m_recording == true){		// Indicate recording flight data.
-			m_led.off(LED::D3);
-		}else{
 			m_led.on(LED::D3);
+		}else{
+			m_led.off(LED::D3);
 		}
 
 		// Temp 1 *****************************************
@@ -181,6 +183,7 @@ void SysControl::run() {
 				m_data.spd = 40;
 			}
 */
+
 		}
 
 		// Sync time with smartphone **********************
@@ -570,25 +573,32 @@ status_t SysControl::bit_rpm() {
 // ************************************************************************
 void SysControl::save_start() {
 
-	startup_wait = 1;
+	check_rpm = 1;
 	uint32_t cnt = 0;
 
 	while (true) {
 
 		// Check if enough revs have happened to be sure everything is normal.
-		if (rpm_cnt > RPM_EM_HALT_WAIT && startup_wait == 1) {
-			startup_wait = 0;
+		if (rpm_cnt > RPM_EM_HALT_WAIT && check_rpm == 1) {
+			check_rpm = 0;
 			break;
 		}
 
-		// Toggle led D3.
-		if (cnt++ % 700000 == 0) {
-			GPIO_ToggleBits(GPIOA, GPIO_Pin_7);
+		if(check_rpm == 0 && cnt % 700000 == 0){
+			m_led.toggle(LED::D2);
 		}
+
+		if (cnt % 700000 == 0) {
+			m_led.toggle(LED::D3);
+		}
+
+		cnt++;
 	}
 
+	rpm_cnt = 0;
+
 	// Turn off led ?!? WTF
-	GPIO_SetBits(GPIOA, GPIO_Pin_7);
+	m_led.off(LED::D3);
 }
 
 // ************************************************************************
