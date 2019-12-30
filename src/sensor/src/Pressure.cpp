@@ -37,10 +37,11 @@ void Pressure::setup(void) {
 
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	// SDO - MISO
+	// VCC
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
@@ -52,7 +53,7 @@ void Pressure::setup(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-	// SDA - MOSI
+	// SDI - MOSI
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
@@ -68,6 +69,14 @@ void Pressure::setup(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 
+	// SDO - MISO
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	/*
 	// GND
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
@@ -75,42 +84,34 @@ void Pressure::setup(void) {
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
+*/
 
-	// VCC
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-	GPIO_ResetBits(GPIOB, GPIO_Pin_5);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_7);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_5);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_3);
-	GPIO_ResetBits(GPIOD, GPIO_Pin_1);
+	GPIO_ResetBits(GPIOB, GPIO_Pin_7);	// VCC
+	GPIO_ResetBits(GPIOB, GPIO_Pin_5);	// CSB
+	GPIO_ResetBits(GPIOD, GPIO_Pin_7);	// SDI
+	GPIO_ResetBits(GPIOD, GPIO_Pin_5);	// SCK
+	GPIO_ResetBits(GPIOD, GPIO_Pin_3);	// SDO
 }
 
 // ************************************************************************
 void Pressure::power_off() {
-	GPIO_ResetBits(GPIOB, GPIO_Pin_5);   // CS
-	GPIO_ResetBits(GPIOD, GPIO_Pin_7);   // MOSI
-	GPIO_ResetBits(GPIOD, GPIO_Pin_5);   // SCL
-	GPIO_ResetBits(GPIOD, GPIO_Pin_3);   // GND
-	GPIO_ResetBits(GPIOD, GPIO_Pin_1);   // VCC
+	GPIO_ResetBits(GPIOB, GPIO_Pin_5);	// CSB
+	GPIO_ResetBits(GPIOD, GPIO_Pin_7);	// SDI
+	GPIO_ResetBits(GPIOD, GPIO_Pin_5);	// SCK
+	GPIO_ResetBits(GPIOD, GPIO_Pin_3);	// SDO
+	GPIO_ResetBits(GPIOB, GPIO_Pin_7);	// VCC
 }
 
 // ************************************************************************
 void Pressure::power_on() {
 
-	GPIO_ResetBits(GPIOD, GPIO_Pin_3); // GND
-	GPIO_SetBits(GPIOD, GPIO_Pin_1);   // VCC
-	GPIO_SetBits(GPIOB, GPIO_Pin_5);   // CS
-	GPIO_SetBits(GPIOD, GPIO_Pin_5);   // SCL
+	//GPIO_ResetBits(GPIOD, GPIO_Pin_3); // GND
+	GPIO_SetBits(GPIOB, GPIO_Pin_7);   // VCC
+	GPIO_SetBits(GPIOB, GPIO_Pin_5);   // CSB
+	GPIO_SetBits(GPIOD, GPIO_Pin_5);   // SCK
 
 	ms_cnt = 500;
-	while (ms_cnt != 0)
-		;    // little delay for sensor to settle.
+	while (ms_cnt != 0);    // little delay for sensor to settle.
 }
 
 // ************************************************************************
@@ -172,13 +173,11 @@ int8_t Pressure::spi_reg_write(uint8_t cs, uint8_t reg_addr, uint8_t *reg_data,
 		}
 		data <<= 1;
 
-		for (uint8_t delay = 0; delay < SPI_OFF_CNT; delay++)
-			;
+		for (uint8_t delay = 0; delay < SPI_OFF_CNT; delay++);
 
 		GPIO_SetBits(GPIOD, GPIO_Pin_5);                      // clock hi
 
-		for (uint8_t delay = 0; delay < SPI_ON_CNT; delay++)
-			;
+		for (uint8_t delay = 0; delay < SPI_ON_CNT; delay++);
 
 		if (cnt % 8 == 0) {
 			data = *reg_data++;
@@ -196,8 +195,7 @@ int8_t Pressure::spi_reg_read(uint8_t cs, uint8_t reg_addr, uint8_t* reg_data,
 
 	GPIO_ResetBits(GPIOB, GPIO_Pin_5);        // pull cs down to start spi read.
 
-	for (uint8_t delay = 0; delay < SPI_CS_CNT; delay++)
-		;
+	for (uint8_t delay = 0; delay < SPI_CS_CNT; delay++);
 
 	// write address.
 	for (uint32_t cnt = 0; cnt < 8; cnt++) {
@@ -211,32 +209,28 @@ int8_t Pressure::spi_reg_read(uint8_t cs, uint8_t reg_addr, uint8_t* reg_data,
 		}
 		reg_addr <<= 1;
 
-		for (uint8_t delay = 0; delay < SPI_OFF_CNT; delay++)
-			;
+		for (uint8_t delay = 0; delay < SPI_OFF_CNT; delay++);
 
 		GPIO_SetBits(GPIOD, GPIO_Pin_5);                      // clock hi
 
-		for (uint8_t delay = 0; delay < SPI_ON_CNT; delay++)
-			;
+		for (uint8_t delay = 0; delay < SPI_ON_CNT; delay++);
 	}
 
 	*reg_data = 0;
 
 	// read response.
-	for (uint32_t cnt = 1; cnt <= 8 * length; cnt++) {    // read "length" bytes
+	for (uint32_t cnt = 1; cnt <= 8 * length; cnt++) {    		// read "length" bytes
 
-		GPIO_ResetBits(GPIOD, GPIO_Pin_5);                    // clock low
+		GPIO_ResetBits(GPIOD, GPIO_Pin_5);                   	// clock low
 
-		for (uint8_t delay = 0; delay < SPI_OFF_CNT; delay++)
-			;
+		for (uint8_t delay = 0; delay < SPI_OFF_CNT; delay++);
 
 		*reg_data <<= 1;
-		*reg_data |= GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7); // read MISO pin.
+		*reg_data |= GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_3); 		// read MISO pin.
 
-		GPIO_SetBits(GPIOD, GPIO_Pin_5);                          // clock hi
+		GPIO_SetBits(GPIOD, GPIO_Pin_5);                          	// clock hi
 
-		for (uint8_t delay = 0; delay < SPI_ON_CNT; delay++)
-			;
+		for (uint8_t delay = 0; delay < SPI_ON_CNT; delay++);
 
 		if (cnt % 8 == 0 && cnt != 8 * length) {
 			reg_data++;

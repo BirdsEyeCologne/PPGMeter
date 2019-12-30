@@ -8,7 +8,7 @@
 #ifndef GLOBAL_H_
 #define GLOBAL_H_
 
-//#define DEBUG_RPM_ENABLE        // Comment for disable dummy rpm signal on pin PD15.
+#define DEBUG_RPM_ENABLE        // Comment for disable dummy rpm signal on pin PD15.
 
 // Comment to disable.
 #define AUTO_SHUTDOWN 60		// Automatic shutdown of the PPGMeter, in seconds, will happen is no recording is going on.
@@ -43,6 +43,9 @@
 
 #define SD_ERROR_DISABLE 3		// After this many SD-Card errors, the SD-Card gets disabled.
 
-#define BIT_MASK 0x0FFF			// RPM debounce bitmask.
+#define BIT_MASK 0x03FF			// RPM debounce bitmask.
+
+#define FALSE 0
+#define TRUE 1
 
 #endif /* GLOBAL_H_ */

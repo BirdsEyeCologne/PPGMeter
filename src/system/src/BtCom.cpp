@@ -54,6 +54,7 @@ void BtCom::setup(BAUD_RATE br) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
+	/*
 	// EN for enabling AT command mode.
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
@@ -61,8 +62,9 @@ void BtCom::setup(BAUD_RATE br) {
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOE, &GPIO_InitStructure);
+*/
 
-	// VCC pin for BT module.
+	// GND pin for BT module.
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -95,8 +97,7 @@ void BtCom::setup(BAUD_RATE br) {
 
 // ************************************************************************
 void BtCom::tx_header(resp_hdr_t header) {
-	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET)
-		;
+	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
 	USART1->DR = (uint8_t) header; // Frame start
 }
 
@@ -122,8 +123,7 @@ void BtCom::power_on() {
 
 	// Wait for settle of module.
 	ms_cnt = 500;
-	while (ms_cnt != 0)
-		;
+	while (ms_cnt != 0);
 }
 
 // ************************************************************************
@@ -134,6 +134,7 @@ void BtCom::power_off() {
 // ************************************************************************
 status_t BtCom::bit(void) {
 
+	/*
 	status_t status = RC::NC;
 
 	uart1_rx_cnt = 0;
@@ -150,6 +151,9 @@ status_t BtCom::bit(void) {
 	uart1_rx_cnt = 0;
 
 	return status;
+	*/
+
+	return RC::OK;
 }
 
 // ************************************************************************
@@ -165,11 +169,13 @@ void BtCom::tx_data(uint8_t * data, uint8_t size) {
 // ************************************************************************
 void BtCom::set_at_mode(bool state) {
 
+	/*
 	if (state == true) {
 		GPIO_SetBits(GPIOE, GPIO_Pin_1); // Set pin high, to enter AT mode. Needs to be high at power on of the module.
 	} else {
 		GPIO_ResetBits(GPIOE, GPIO_Pin_1);    // Pull pin low, to leave AT mode.
 	}
+	*/
 }
 
 }

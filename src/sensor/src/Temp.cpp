@@ -54,6 +54,7 @@ void Temp::setup(SENSOR nr) {
       GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
       GPIO_Init(m_t1.SO.Port, &GPIO_InitStructure);
 
+      /*
       // software spi VCC.
       GPIO_InitStructure.GPIO_Pin = m_t1.VCC.Pin;
       GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
@@ -71,6 +72,8 @@ void Temp::setup(SENSOR nr) {
       // set initial states of the pins.
       GPIO_ResetBits(m_t1.VCC.Port, m_t1.VCC.Pin);
       GPIO_ResetBits(m_t1.GND.Port, m_t1.GND.Pin);
+ */
+
       GPIO_ResetBits(m_t1.CS.Port, m_t1.CS.Pin);
       GPIO_ResetBits(m_t1.SCK.Port, m_t1.SCK.Pin);
    }
@@ -100,6 +103,7 @@ void Temp::setup(SENSOR nr) {
       GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
       GPIO_Init(m_t2.SO.Port, &GPIO_InitStructure);
 
+      /*
       // software spi VCC.
       GPIO_InitStructure.GPIO_Pin = m_t2.VCC.Pin;
       GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
@@ -117,6 +121,7 @@ void Temp::setup(SENSOR nr) {
       // set initial states of the pins.
       GPIO_ResetBits(m_t2.VCC.Port, m_t2.VCC.Pin);
       GPIO_ResetBits(m_t2.GND.Port, m_t2.GND.Pin);
+  */
       GPIO_ResetBits(m_t2.CS.Port, m_t2.CS.Pin);
       GPIO_ResetBits(m_t2.SCK.Port, m_t2.SCK.Pin);
    }
@@ -125,6 +130,7 @@ void Temp::setup(SENSOR nr) {
 // ************************************************************************
 void Temp::power_off(SENSOR nr) {
 
+	/*
    //****************************************************
    if (nr == SENSOR::T1) {
       GPIO_ResetBits(m_t1.GND.Port, m_t1.GND.Pin);
@@ -138,11 +144,12 @@ void Temp::power_off(SENSOR nr) {
       GPIO_ResetBits(m_t2.VCC.Port, m_t2.VCC.Pin);
       GPIO_ResetBits(m_t2.CS.Port, m_t2.CS.Pin);
    }
+   */
 }
 
 // ************************************************************************
 void Temp::power_on(SENSOR nr) {
-
+/*
    //****************************************************
    if (nr == SENSOR::T1) {
       GPIO_ResetBits(m_t1.GND.Port, m_t1.GND.Pin);
@@ -159,6 +166,7 @@ void Temp::power_on(SENSOR nr) {
 
    ms_cnt = 200;
    while (ms_cnt != 0);    // little delay for temp sensor to settle.
+   */
 }
 
 // ************************************************************************
@@ -258,6 +266,7 @@ status_t Temp::bit(SENSOR nr) {
 // ************************************************************
 void Temp::spi2_setup(void) {
 
+	/*
     GPIO_InitTypeDef GPIO_InitStructure;
     SPI_InitTypeDef SPI_InitStructure;
 
@@ -309,6 +318,7 @@ void Temp::spi2_setup(void) {
     SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     SPI_Init(SPI2, &SPI_InitStructure);
     SPI_Cmd(SPI2, ENABLE);
+    */
 }
 
 }

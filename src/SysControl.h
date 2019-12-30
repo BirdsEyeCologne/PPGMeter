@@ -30,16 +30,14 @@
 enum class FSM : uint8_t {WAIT_SPD, WAIT_TAKEOFF, RECORDING_START, RECORDING, RECORDING_PREP_STOP, RECORDING_STOP};
 using fsm_t = FSM;
 
-// Structures to hold the information of the Built In Test (BIT).
+// Structure to hold the information of the Built In Test (BIT).
 namespace bit{
-   struct sensors_t {
+   struct components_t {
       status_t temp1;
       status_t temp2;
       status_t rpm;
       status_t gps;
       status_t press;
-   };
-   struct system_t {
       status_t com;
       status_t wd;
       status_t rtc;
@@ -62,11 +60,10 @@ private:
    void setup();
 
    // Startup Built In Test (BIT) of sensor and system components.
-   void sensor_bit();
+   void startup_bit();
    status_t bit_temp(SENSOR nr);
    status_t bit_pressure();
    status_t bit_rpm();
-   void system_bit();
    status_t bit_watch_dog();
    status_t bit_rtc();
    status_t bit_data_storage();
@@ -104,9 +101,8 @@ private:
    sens::Pressure m_mb;		// The BMP280 sensor.
    sens::RPM m_rpm;			// The Round Per Minutes sensor.
 
-   // Structures to hold the BIT information.
-   bit::sensors_t m_sen;
-   bit::system_t m_sys;
+   // Structure to hold the BIT information.
+   bit::components_t m_bit;
 
    // Is a recording to SD-Card ongoing?
    bool m_recording;

@@ -24,9 +24,9 @@ SysControl::SysControl() {
 	save_start();
 	#endif
 
-	// Startup Built In Test (BIT) of coponents.
-	system_bit();
-	sensor_bit();
+	// Startup Built In Test (BIT) of system components
+	// and sensors.
+	startup_bit();
 }
 
 // ****************************************************************
@@ -95,32 +95,31 @@ void SysControl::run() {
 
 	ms_clock = 0; // Just in case ;)
 
-	// Infinite loop. Only way out is some sort of fault (segfault etc.), or
-	// automatic shutdown / standby (if enabled).
+
 	while (true) {
 
 		ms_cnt = 1000;					// There is a wait loop at the end, which waits for 1000 ms after all the work is done.
 
 		m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
 
-		if(m_recording == true){		// Indicate recording flight data.
+		if(m_recording == true){		// Indicate recording of flight data.
 			m_led.on(LED::D3);
 		}else{
 			m_led.off(LED::D3);
 		}
 
 		// Temp 1 *****************************************
-		if (m_sen.temp1 == RC::OK) {
+		if (m_bit.temp1 == RC::OK) {
 			m_data.t1 = m_temp.get_value(SENSOR::T1);
 		}
 
 		// Temp 2 *****************************************
-		if (m_sen.temp2 == RC::OK) {
+		if (m_bit.temp2 == RC::OK) {
 			m_data.t2 = m_temp.get_value(SENSOR::T2);
 		}
 
 		// Pressure (p) and Temp 3 ************************
-		if (m_sen.press == RC::OK) {
+		if (m_bit.press == RC::OK) {
 			if (m_mb.get_values(m_data.p, m_data.t3) != BMP280_OK) {
 				m_data.p = 0;
 				m_data.t3 = 0;
@@ -129,7 +128,7 @@ void SysControl::run() {
 		}
 
 		// RPM ********************************************
-		if (m_sen.rpm == RC::OK) {
+		if (m_bit.rpm == RC::OK) {
 
 			static bool spinning = false;
 
@@ -148,9 +147,9 @@ void SysControl::run() {
 				spinning = false;
 				ms_clock = 0;
 			}
-			// Automatic shutdown of the uc if there is no RPM for AUTO_SHUTDOWN seconds.
+			// Automatic shutdown of the uc if there is no RPM for AUTO_SHUTDOWN seconds and
+			// flight recording is not active.
 			#ifdef AUTO_SHUTDOWN
-			// Shutdown if motor is not spinning and no recording is going on.
 			else if (m_data.rpm == 0 && spinning == false && ms_clock >= 1000 * AUTO_SHUTDOWN && m_recording == false){
 				PWR_EnterSTANDBYMode();
 			}
@@ -158,12 +157,12 @@ void SysControl::run() {
 		}
 
 		// Get motor hour counter (h) *********************
-		if (m_sys.rtc == RC::OK) {
+		if (m_bit.rtc == RC::OK) {
 			m_data.h = m_rtc.get_measure();
 		}
 
 		// BT transceive **********************************
-		if (m_sys.com == RC::OK) {
+		if (m_bit.com == RC::OK) {
 
 			// Transmit sensor values to smartphone.
 			m_com.tx_header(RESP_HDR::REPORT_DATA);
@@ -193,7 +192,7 @@ void SysControl::run() {
 				RTC_TimeTypeDef now = {0,0,0,0};
 				RTC_DateTypeDef today = {0,0,0,0};
 
-				// Use the data stored on m_data, which is sent
+				// Use the data stored on m_data, which had been sent
 				// via bluetooth from the smartphone.
 				now.RTC_Minutes = m_data.min;
 				now.RTC_Hours = m_data.hour;
@@ -208,10 +207,10 @@ void SysControl::run() {
 		}
 
 		// SD-Card storage ********************************
-		if (m_sys.sto == RC::OK) {
+		if (m_bit.sto == RC::OK) {
 
 			// Get the values of the local RTC, not the values
-			// stored on m_data, which is from the smartphone.
+			// stored on m_data, which is the smartphone time.
 			// Most likely both times are eaqual. Regular synch of
 			// uc clock is recomended.
 			RTC_TimeTypeDef now = m_rtc.get_time();
@@ -228,7 +227,7 @@ void SysControl::run() {
 			if(status == RC::ERROR){
 				static uint8_t error = 0;
 				if(error++ >= SD_ERROR_DISABLE){
-					m_sys.sto = RC::FAIL;
+					m_bit.sto = RC::FAIL;
 				}
 			}
 
@@ -311,33 +310,35 @@ status_t SysControl::record(uint8_t * data, uint8_t size) {
 }
 
 // ****************************************************************
-void SysControl::system_bit() {
+void SysControl::startup_bit() {
 
-#ifdef IWDG_ENABLE
+
+	#ifdef IWDG_ENABLE
 	// ****************************************************
 	// Watch Dog.
-	m_sys.wd = bit_watch_dog();
+	m_sys_bit.wd = bit_watch_dog();
 	m_wd.refresh();
-#endif
+	#endif
+
+	// System components bit.
 
 	// ****************************************************
 	// Data Storage.
-	m_sys.sto = bit_data_storage();
+	m_bit.sto = bit_data_storage();
 	m_wd.refresh();
 
 	// ****************************************************
 	// RTC.
-	m_sys.rtc = bit_rtc();
+	m_bit.rtc = bit_rtc();
 	m_wd.refresh();
 
 	// ****************************************************
 	// BT communication.
-	m_sys.com = bit_bt_com();
+	m_bit.com = bit_bt_com();
 	m_wd.refresh();
-}
 
-// ****************************************************************
-void SysControl::sensor_bit() {
+
+	// Sensor bit.
 
 	uint8_t retries;
 
@@ -345,35 +346,35 @@ void SysControl::sensor_bit() {
 	// Temperature sensors.
 	retries = 0;
 	do {
-		m_sen.temp1 = bit_temp(SENSOR::T1);
+		m_bit.temp1 = bit_temp(SENSOR::T1);
 		m_wd.refresh();
 		retries++;
-	} while (retries <= BIT_RETRY && m_sen.temp1 != RC::OK);
+	} while (retries <= BIT_RETRY && m_bit.temp1 != RC::OK);
 
 	retries = 0;
 	do {
-		m_sen.temp2 = bit_temp(SENSOR::T2);
+		m_bit.temp2 = bit_temp(SENSOR::T2);
 		m_wd.refresh();
 		retries++;
-	} while (retries <= BIT_RETRY && m_sen.temp2 != RC::OK);
+	} while (retries <= BIT_RETRY && m_bit.temp2 != RC::OK);
 
 	// ****************************************************
-	// Pressure sensor.
+	// Pressure and T3 sensor.
 	retries = 0;
 	do {
-		m_sen.press = bit_pressure();
+		m_bit.press = bit_pressure();
 		m_wd.refresh();
 		retries++;
-	} while (retries <= BIT_RETRY && m_sen.press != RC::OK);
+	} while (retries <= BIT_RETRY && m_bit.press != RC::OK);
 
 	// ****************************************************
 	// RPM sensor.
 	retries = 0;
 	do {
-		m_sen.rpm = bit_rpm();
+		m_bit.rpm = bit_rpm();
 		m_wd.refresh();
 		retries++;
-	} while (retries <= BIT_RETRY && m_sen.rpm != RC::OK);
+	} while (retries <= BIT_RETRY && m_bit.rpm != RC::OK);
 }
 
 // ****************************************************************
@@ -571,20 +572,27 @@ status_t SysControl::bit_rpm() {
 }
 
 // ************************************************************************
+// To be sure the motor is porplerly working, a minimum of RPM_EM_HALT_WAIT revs have to
+// be detected, without to high RPMs. The actual check of to high RPMs is done
+// in TIM2_IRQHandler (stm32f4xx_it.c).
+// check_rpm will get FALSE if the RPMs are to high during save start (set in TIM2_IRQHandler).
+// check_rpm get also set FALSE if save start is ok, this will disable checking
+// of to high RPMs in TIM2_IRQHandler (disabling save start).
+// This method will return only, if save start is done and no high RPMs are detected.
 void SysControl::save_start() {
 
-	check_rpm = 1;
+	check_rpm = TRUE;
 	uint32_t cnt = 0;
 
 	while (true) {
 
-		// Check if enough revs have happened to be sure everything is normal.
-		if (rpm_cnt > RPM_EM_HALT_WAIT && check_rpm == 1) {
-			check_rpm = 0;
+		if (rpm_cnt > RPM_EM_HALT_WAIT && check_rpm == TRUE) {
+			check_rpm = FALSE;
 			break;
 		}
 
-		if(check_rpm == 0 && cnt % 700000 == 0){
+		// Toggle led D2 to indicate a save start halt of the motor.
+		if(check_rpm == FALSE && cnt % 700000 == 0){
 			m_led.toggle(LED::D2);
 		}
 
@@ -596,8 +604,8 @@ void SysControl::save_start() {
 	}
 
 	rpm_cnt = 0;
+	ms_clock = 0;
 
-	// Turn off led ?!? WTF
 	m_led.off(LED::D3);
 }
 
@@ -622,6 +630,6 @@ status_t SysControl::bit_bt_com() {
 
 	return status;
 }
-// ************************************************************************
+
 
 

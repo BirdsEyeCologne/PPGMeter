@@ -211,9 +211,11 @@ void TIM2_IRQHandler(void) {
 
 	us100_clock++;
 
-	// Save pin state.
+	// Shift old pin states.
 	rpm_debounced <<= 1;
-	if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0) == Bit_SET) {
+
+	// Save new pin state of RPM pin.
+	if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == Bit_SET) {
 		rpm_debounced |= 1;
 	}
 
@@ -233,13 +235,17 @@ void TIM2_IRQHandler(void) {
 		rpm_is_high = 0;
 		rpm_cnt++;
 
+		// Check for to high RPMs, by measruing the time between two ignitions.
 		#ifdef SAVE_START
-		if (check_rpm == 1) {
+		if (check_rpm == TRUE) {
+			// Time delta between two iginitions is to small => RPM is to high!
 			if (us100_clock < RPM_EM_HALT_US) {
 				em_halt_cnt++;
+				// To many high RPM measured => Halt motor.
 				if (em_halt_cnt >= RPM_EM_HALT_CNT) {
-					GPIO_SetBits(GPIOA, GPIO_Pin_1);   // Emergency Halt pin!
-					check_rpm = 0;
+					// Short the ignition coil, like the kill switch does.
+					GPIO_SetBits(GPIOA, GPIO_Pin_0);   // Emergency Halt !!
+					check_rpm = FALSE;
 				}
 			}
 		}
