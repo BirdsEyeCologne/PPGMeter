@@ -61,6 +61,7 @@ void Temp::setup(SENSOR nr) {
       GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
       GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
       GPIO_Init(m_t1.VCC.Port, &GPIO_InitStructure);
+*/
 
       // software spi GND.
       GPIO_InitStructure.GPIO_Pin = m_t1.GND.Pin;
@@ -70,10 +71,8 @@ void Temp::setup(SENSOR nr) {
       GPIO_Init(m_t1.GND.Port, &GPIO_InitStructure);
 
       // set initial states of the pins.
-      GPIO_ResetBits(m_t1.VCC.Port, m_t1.VCC.Pin);
+      //GPIO_ResetBits(m_t1.VCC.Port, m_t1.VCC.Pin);
       GPIO_ResetBits(m_t1.GND.Port, m_t1.GND.Pin);
- */
-
       GPIO_ResetBits(m_t1.CS.Port, m_t1.CS.Pin);
       GPIO_ResetBits(m_t1.SCK.Port, m_t1.SCK.Pin);
    }
@@ -110,6 +109,7 @@ void Temp::setup(SENSOR nr) {
       GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
       GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
       GPIO_Init(m_t2.VCC.Port, &GPIO_InitStructure);
+*/
 
       // software spi GND.
       GPIO_InitStructure.GPIO_Pin = m_t2.GND.Pin;
@@ -119,9 +119,8 @@ void Temp::setup(SENSOR nr) {
       GPIO_Init(m_t2.GND.Port, &GPIO_InitStructure);
 
       // set initial states of the pins.
-      GPIO_ResetBits(m_t2.VCC.Port, m_t2.VCC.Pin);
+      //GPIO_ResetBits(m_t2.VCC.Port, m_t2.VCC.Pin);
       GPIO_ResetBits(m_t2.GND.Port, m_t2.GND.Pin);
-  */
       GPIO_ResetBits(m_t2.CS.Port, m_t2.CS.Pin);
       GPIO_ResetBits(m_t2.SCK.Port, m_t2.SCK.Pin);
    }
@@ -130,43 +129,39 @@ void Temp::setup(SENSOR nr) {
 // ************************************************************************
 void Temp::power_off(SENSOR nr) {
 
-	/*
+
    //****************************************************
    if (nr == SENSOR::T1) {
       GPIO_ResetBits(m_t1.GND.Port, m_t1.GND.Pin);
-      GPIO_ResetBits(m_t1.VCC.Port, m_t1.VCC.Pin);
       GPIO_ResetBits(m_t1.CS.Port, m_t1.CS.Pin);
    }
 
    //****************************************************
    if (nr == SENSOR::T2) {
       GPIO_ResetBits(m_t2.GND.Port, m_t2.GND.Pin);
-      GPIO_ResetBits(m_t2.VCC.Port, m_t2.VCC.Pin);
       GPIO_ResetBits(m_t2.CS.Port, m_t2.CS.Pin);
    }
-   */
+
 }
 
 // ************************************************************************
 void Temp::power_on(SENSOR nr) {
-/*
+
    //****************************************************
    if (nr == SENSOR::T1) {
-      GPIO_ResetBits(m_t1.GND.Port, m_t1.GND.Pin);
-      GPIO_SetBits(m_t1.VCC.Port, m_t1.VCC.Pin);
+      GPIO_SetBits(m_t1.GND.Port, m_t1.GND.Pin);
       GPIO_SetBits(m_t1.CS.Port, m_t1.CS.Pin);
    }
 
    //****************************************************
    if (nr == SENSOR::T2) {
-      GPIO_ResetBits(m_t2.GND.Port, m_t2.GND.Pin);
-      GPIO_SetBits(m_t2.VCC.Port, m_t2.VCC.Pin);
+      GPIO_SetBits(m_t2.GND.Port, m_t2.GND.Pin);
       GPIO_SetBits(m_t2.CS.Port, m_t2.CS.Pin);
    }
 
    ms_cnt = 200;
    while (ms_cnt != 0);    // little delay for temp sensor to settle.
-   */
+
 }
 
 // ************************************************************************

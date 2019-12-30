@@ -20,9 +20,9 @@ SysControl::SysControl() {
 	setup();
 
 	// Only returns if a save start was done (if enabled).
-	#ifdef SAVE_START
+#ifdef SAVE_START
 	save_start();
-	#endif
+#endif
 
 	// Startup Built In Test (BIT) of system components
 	// and sensors.
@@ -30,7 +30,8 @@ SysControl::SysControl() {
 }
 
 // ****************************************************************
-SysControl::~SysControl() {}
+SysControl::~SysControl() {
+}
 
 // ****************************************************************
 void SysControl::setup() {
@@ -74,7 +75,7 @@ void SysControl::setup() {
 	// This pin is also the source for the RPM counter.
 	PWR_WakeUpPinCmd(ENABLE);
 
-	#ifdef DEBUG_RPM_ENABLE
+#ifdef DEBUG_RPM_ENABLE
 	// Dummy RPM on pin D15 for testing...
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -83,7 +84,7 @@ void SysControl::setup() {
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
-	#endif
+#endif
 
 	// Setup of rpm interrupts etc. needed for save_start / em halt!
 	m_rpm.setup();
@@ -95,16 +96,15 @@ void SysControl::run() {
 
 	ms_clock = 0; // Just in case ;)
 
-
 	while (true) {
 
-		ms_cnt = 1000;					// There is a wait loop at the end, which waits for 1000 ms after all the work is done.
+		ms_cnt = 1000;// There is a wait loop at the end, which waits for 1000 ms after all the work is done.
 
 		m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
 
-		if(m_recording == true){		// Indicate recording of flight data.
+		if (m_recording == true) {		// Indicate recording of flight data.
 			m_led.on(LED::D3);
-		}else{
+		} else {
 			m_led.off(LED::D3);
 		}
 
@@ -133,16 +133,15 @@ void SysControl::run() {
 			static bool spinning = false;
 
 			m_data.rpm = m_rpm.get_value();
-			m_data.rpm *= RPM_SCALE;		// Scaling for Round Per Minute (RPM).
-			m_data.rpm /= 100;             	// "Round" rpm value to full hundreds of RPMs.
+			m_data.rpm *= RPM_SCALE;	// Scaling for Round Per Minute (RPM).
+			m_data.rpm /= 100;    		// "Round" rpm value to full hundreds of RPMs.
 			m_data.rpm *= 100;
 
 			// Trigger total time measuring of the motor spinning (motor hour meter).
 			if (m_data.rpm != 0 && spinning == false) {
 				m_rtc.measure_start();
 				spinning = true;
-			}
-			else if (m_data.rpm == 0 && spinning == true) {
+			} else if (m_data.rpm == 0 && spinning == true) {
 				m_rtc.measure_stop();
 				spinning = false;
 				ms_clock = 0;
@@ -150,7 +149,9 @@ void SysControl::run() {
 			// Automatic shutdown of the uc if there is no RPM for AUTO_SHUTDOWN seconds and
 			// flight recording is not active.
 			#ifdef AUTO_SHUTDOWN
-			else if (m_data.rpm == 0 && spinning == false && ms_clock >= 1000 * AUTO_SHUTDOWN && m_recording == false){
+			else if (m_data.rpm == 0 && spinning == false
+					&& ms_clock >= 1000 * AUTO_SHUTDOWN
+					&& m_recording == false) {
 				PWR_EnterSTANDBYMode();
 			}
 			#endif
@@ -174,14 +175,14 @@ void SysControl::run() {
 			// Check received command by header information.
 			check_cmd(hdr, m_data);
 
-/*
-			// Simulation of takeoff, flight and landing :)
-			static uint8_t cnt = 0;
-			cnt++;
-			if(cnt >= 20 && cnt <= 60 && m_data.bt_valid == true){
-				m_data.spd = 40;
-			}
-*/
+			/*
+			 // Simulation of takeoff, flight and landing :)
+			 static uint8_t cnt = 0;
+			 cnt++;
+			 if(cnt >= 20 && cnt <= 60 && m_data.bt_valid == true){
+			 m_data.spd = 40;
+			 }
+			 */
 
 		}
 
@@ -189,8 +190,8 @@ void SysControl::run() {
 		if (time_sync == 1) { // User has pressed BTN::K0.
 			if (m_data.bt_valid == true) {
 
-				RTC_TimeTypeDef now = {0,0,0,0};
-				RTC_DateTypeDef today = {0,0,0,0};
+				RTC_TimeTypeDef now = { 0, 0, 0, 0 };
+				RTC_DateTypeDef today = { 0, 0, 0, 0 };
 
 				// Use the data stored on m_data, which had been sent
 				// via bluetooth from the smartphone.
@@ -215,7 +216,7 @@ void SysControl::run() {
 			// uc clock is recomended.
 			RTC_TimeTypeDef now = m_rtc.get_time();
 
-			m_data.sec = now.RTC_Seconds;	// Dirty hack, see Memory.h (sec and day)
+			m_data.sec = now.RTC_Seconds;// Dirty hack, see Memory.h (sec and day)
 			m_data.min = now.RTC_Minutes;
 			m_data.hour = now.RTC_Hours;
 
@@ -224,9 +225,9 @@ void SysControl::run() {
 			status_t status = record(m_data.mem.data(), 31);
 
 			// If to many recording errors have happened, disable storage.
-			if(status == RC::ERROR){
+			if (status == RC::ERROR) {
 				static uint8_t error = 0;
-				if(error++ >= SD_ERROR_DISABLE){
+				if (error++ >= SD_ERROR_DISABLE) {
 					m_bit.sto = RC::FAIL;
 				}
 			}
@@ -238,7 +239,8 @@ void SysControl::run() {
 
 		m_wd.refresh();
 
-		while (ms_cnt != 0);
+		while (ms_cnt != 0)
+			;
 	}
 }
 
@@ -289,9 +291,10 @@ status_t SysControl::record(uint8_t * data, uint8_t size) {
 
 		// ****************************************************
 		if (state == FSM::RECORDING_PREP_STOP) {
-			if (m_data.spd >= SPD_FLIGHT){
+			if (m_data.spd >= SPD_FLIGHT) {
 				state = FSM::RECORDING;
-			}else if (m_data.spd < SPD_FLIGHT && ms_clock >= 1000 * SPD_FLIGHT_SECS) {
+			} else if (m_data.spd < SPD_FLIGHT
+					&& ms_clock >= 1000 * SPD_FLIGHT_SECS) {
 				state = FSM::RECORDING_STOP;
 			}
 			status = m_sto.write(data, size);
@@ -312,13 +315,12 @@ status_t SysControl::record(uint8_t * data, uint8_t size) {
 // ****************************************************************
 void SysControl::startup_bit() {
 
-
-	#ifdef IWDG_ENABLE
+#ifdef IWDG_ENABLE
 	// ****************************************************
 	// Watch Dog.
 	m_sys_bit.wd = bit_watch_dog();
 	m_wd.refresh();
-	#endif
+#endif
 
 	// System components bit.
 
@@ -336,7 +338,6 @@ void SysControl::startup_bit() {
 	// BT communication.
 	m_bit.com = bit_bt_com();
 	m_wd.refresh();
-
 
 	// Sensor bit.
 
@@ -382,13 +383,13 @@ void SysControl::check_cmd(hdr_t hdr, Memory &data) {
 
 	switch (hdr) {
 
-		case HDR::NO_CMD:
-			data.bt_valid = false;
-			break;
+	case HDR::NO_CMD:
+		data.bt_valid = false;
+		break;
 
-		case HDR::LOC_TIM:
-			data.bt_valid = true;
-			break;
+	case HDR::LOC_TIM:
+		data.bt_valid = true;
+		break;
 	}
 }
 
@@ -592,7 +593,7 @@ void SysControl::save_start() {
 		}
 
 		// Toggle led D2 to indicate a save start halt of the motor.
-		if(check_rpm == FALSE && cnt % 700000 == 0){
+		if (check_rpm == FALSE && cnt % 700000 == 0) {
 			m_led.toggle(LED::D2);
 		}
 
@@ -602,6 +603,15 @@ void SysControl::save_start() {
 
 		cnt++;
 	}
+
+	// Configure Emergency Halt pin as input, just in case...
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	rpm_cnt = 0;
 	ms_clock = 0;
@@ -630,6 +640,4 @@ status_t SysControl::bit_bt_com() {
 
 	return status;
 }
-
-
 

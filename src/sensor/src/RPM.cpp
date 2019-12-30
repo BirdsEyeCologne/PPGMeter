@@ -27,7 +27,7 @@ void RPM::setup() {
    GPIO_InitTypeDef GPIO_InitStructure;
 
    // RPM pin
-   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -35,7 +35,7 @@ void RPM::setup() {
    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
    // Emergency Halt pin
-   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;

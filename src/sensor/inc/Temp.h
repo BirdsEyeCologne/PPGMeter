@@ -41,8 +41,7 @@ private:
 		port_pin_t SCK = {GPIOB, GPIO_Pin_10};	// port, pin tuples
 		port_pin_t CS = {GPIOB, GPIO_Pin_12};
 		port_pin_t SO = {GPIOB, GPIO_Pin_14};
-		//port_pin_t VCC = {GPIOE, GPIO_Pin_14};
-		//port_pin_t GND = {GPIOE, GPIO_Pin_12};
+		port_pin_t GND = {GPIOE, GPIO_Pin_14};
 		bool cable_connected = true;
 	} m_t1;
 
@@ -50,8 +49,7 @@ private:
         port_pin_t SCK = {GPIOD, GPIO_Pin_8};  // port, pin tuples
         port_pin_t CS = {GPIOD, GPIO_Pin_10};
         port_pin_t SO = {GPIOD, GPIO_Pin_12};
-        //port_pin_t VCC = {GPIOD, GPIO_Pin_10};
-        //port_pin_t GND = {GPIOD, GPIO_Pin_8};
+        port_pin_t GND = {GPIOD, GPIO_Pin_14};
         bool cable_connected = true;
     } m_t2;
 };

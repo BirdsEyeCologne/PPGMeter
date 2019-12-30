@@ -215,7 +215,7 @@ void TIM2_IRQHandler(void) {
 	rpm_debounced <<= 1;
 
 	// Save new pin state of RPM pin.
-	if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == Bit_SET) {
+	if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0) == Bit_SET) {
 		rpm_debounced |= 1;
 	}
 
@@ -244,7 +244,7 @@ void TIM2_IRQHandler(void) {
 				// To many high RPM measured => Halt motor.
 				if (em_halt_cnt >= RPM_EM_HALT_CNT) {
 					// Short the ignition coil, like the kill switch does.
-					GPIO_SetBits(GPIOA, GPIO_Pin_0);   // Emergency Halt !!
+					GPIO_SetBits(GPIOA, GPIO_Pin_1);   // Emergency Halt !!
 					check_rpm = FALSE;
 				}
 			}
