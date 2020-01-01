@@ -11,7 +11,7 @@ extern volatile uint32_t rpm_cnt;
 
 volatile uint32_t ms_cnt;
 volatile uint32_t ms_clock;
-volatile uint32_t check_rpm;
+//volatile uint32_t check_rpm;
 volatile uint8_t time_sync;
 
 // ****************************************************************
@@ -19,10 +19,10 @@ SysControl::SysControl() {
 
 	setup();
 
-	// Only returns if a save start was done (if enabled).
-#ifdef SAVE_START
-	save_start();
-#endif
+//	// Only returns if a save start was done (if enabled).
+//	#ifdef SAVE_START
+//	save_start();
+//	#endif
 
 	// Startup Built In Test (BIT) of system components
 	// and sensors.
@@ -98,11 +98,15 @@ void SysControl::run() {
 
 	while (true) {
 
+		// Read Emergency Halt pin to get Emergency Halt status.
+		bool em_halt = (GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_1) == Bit_SET);
+
 		ms_cnt = 1000;// There is a wait loop at the end, which waits for 1000 ms after all the work is done.
 
 		m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
 
-		if (m_recording == true) {		// Indicate recording of flight data.
+		// Indicate recording of flight data, or Emergency Halt of the motor.
+		if (m_recording == true || em_halt == true) {
 			m_led.on(LED::D3);
 		} else {
 			m_led.off(LED::D3);
@@ -131,6 +135,7 @@ void SysControl::run() {
 		if (m_bit.rpm == RC::OK) {
 
 			static bool spinning = false;
+			static bool shutdown = false;
 
 			m_data.rpm = m_rpm.get_value();
 			m_data.rpm *= RPM_SCALE;	// Scaling for Round Per Minute (RPM).
@@ -144,14 +149,18 @@ void SysControl::run() {
 			} else if (m_data.rpm == 0 && spinning == true) {
 				m_rtc.measure_stop();
 				spinning = false;
+				shutdown = true;
 				ms_clock = 0;
 			}
 			// Automatic shutdown of the uc if there is no RPM for AUTO_SHUTDOWN seconds and
-			// flight recording is not active.
+			// flight recording is inactive.
 			#ifdef AUTO_SHUTDOWN
-			else if (m_data.rpm == 0 && spinning == false
-					&& ms_clock >= 1000 * AUTO_SHUTDOWN
-					&& m_recording == false) {
+			else if (
+					shutdown == true &&
+					em_halt == false &&
+					ms_clock >= 1000 * AUTO_SHUTDOWN &&
+					m_recording == false
+					) {
 				PWR_EnterSTANDBYMode();
 			}
 			#endif
@@ -239,8 +248,7 @@ void SysControl::run() {
 
 		m_wd.refresh();
 
-		while (ms_cnt != 0)
-			;
+		while (ms_cnt != 0);
 	}
 }
 
@@ -581,7 +589,7 @@ status_t SysControl::bit_rpm() {
 // of to high RPMs in TIM2_IRQHandler (disabling save start).
 // This method will return only, if save start is done and no high RPMs are detected.
 void SysControl::save_start() {
-
+/*
 	check_rpm = TRUE;
 	uint32_t cnt = 0;
 
@@ -617,6 +625,7 @@ void SysControl::save_start() {
 	ms_clock = 0;
 
 	m_led.off(LED::D3);
+	*/
 }
 
 // ************************************************************************

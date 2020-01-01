@@ -47,7 +47,7 @@ static uint32_t us100_clock = 0;
 
 /* External variables ---------------------------------------------------------*/
 extern __IO uint32_t ms_cnt;
-extern __IO uint32_t check_rpm;
+//extern __IO uint32_t check_rpm;
 extern __IO uint32_t ms_clock;
 extern __IO uint32_t rpm_cnt;
 extern __IO uint32_t uwPeriodValue;
@@ -193,7 +193,7 @@ void TIM4_IRQHandler(void) {
 	ms_clock++;
 
 	#ifdef DEBUG_RPM_ENABLE
-	if (ms_clock % 4 == 0) {
+	if (ms_clock % 2 == 0) {
 		GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
 	}
 	#endif
@@ -237,16 +237,13 @@ void TIM2_IRQHandler(void) {
 
 		// Check for to high RPMs, by measruing the time between two ignitions.
 		#ifdef SAVE_START
-		if (check_rpm == TRUE) {
-			// Time delta between two iginitions is to small => RPM is to high!
-			if (us100_clock < RPM_EM_HALT_US) {
-				em_halt_cnt++;
-				// To many high RPM measured => Halt motor.
-				if (em_halt_cnt >= RPM_EM_HALT_CNT) {
-					// Short the ignition coil, like the kill switch does.
-					GPIO_SetBits(GPIOA, GPIO_Pin_1);   // Emergency Halt !!
-					check_rpm = FALSE;
-				}
+		// Time delta between two iginitions is to small => RPM is to high!
+		if (us100_clock < RPM_EM_HALT_US) {
+			em_halt_cnt++;
+			// To many high RPM measured => Halt motor.
+			if (em_halt_cnt >= RPM_EM_HALT_CNT) {
+				// Short the ignition coil to ground, like the kill switch would do.
+				GPIO_SetBits(GPIOA, GPIO_Pin_1);	// Emergency Halt !!
 			}
 		}
 		us100_clock = 0;

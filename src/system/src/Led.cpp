@@ -32,7 +32,7 @@ void Led::setup(LED led) {
 		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 		GPIO_Init(GPIOA, &GPIO_InitStructure);
-		//GPIO_SetBits(GPIOA, GPIO_Pin_7);
+		//GPIO_SetBits(GPIOA, GPIO_Pin_8);
 	}
 
 	// Alive indicator.
@@ -43,7 +43,7 @@ void Led::setup(LED led) {
 		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 		GPIO_Init(GPIOD, &GPIO_InitStructure);
-		//GPIO_SetBits(GPIOA, GPIO_Pin_6);
+		//GPIO_SetBits(GPIOD, GPIO_Pin_13);
 	}
 }
 
