@@ -36,7 +36,6 @@ namespace bit{
       status_t temp1;
       status_t temp2;
       status_t rpm;
-      status_t gps;
       status_t press;
       status_t com;
       status_t wd;
@@ -50,7 +49,7 @@ namespace bit{
 class SysControl {
 
 public:
-   SysControl();
+   explicit SysControl();
    virtual ~SysControl();
    void run(void);
 
@@ -69,8 +68,10 @@ private:
    status_t bit_data_storage();
    status_t bit_bt_com();
 
-   // Is called (if enabled) and will return ONLY after a save start is reccognized.
-   void save_start();
+	#ifdef false
+	// Is called (if enabled) and will return ONLY after a save start is reccognized.
+	void save_start();
+	#endif
 
    // For development only.
    void test_gpio();

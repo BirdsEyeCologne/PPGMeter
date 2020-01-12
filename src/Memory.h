@@ -20,9 +20,9 @@ public:
 	virtual ~Memory(){}
 public:
 
-	static constexpr uint16_t size = 33;	// Total amount of Memory used for the sensor data.
+	static constexpr uint32_t SIZE = 33;	// Total amount of Memory used for the sensor data.
 
-	std::array<uint8_t, size> mem = {0};	// Memory for sensory data relevant for the system.
+	std::array<uint8_t, SIZE> mem = {0};	// Memory for sensory data relevant for the system.
 
 	// Sensor data gathered at uc (16 bytes).
 	uint16_t &t1 = reinterpret_cast<uint16_t&>(mem[0]);		// #1 MAX6675 temperature value.

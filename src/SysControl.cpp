@@ -7,22 +7,19 @@
 
 #include <SysControl.h>
 
+// From stm32f4xx_it.c -> TIM2_IRQHandler
 extern volatile uint32_t rpm_cnt;
 
+// For stm32f4xx_it.c
 volatile uint32_t ms_cnt;
 volatile uint32_t ms_clock;
-//volatile uint32_t check_rpm;
 volatile uint8_t time_sync;
 
 // ****************************************************************
-SysControl::SysControl() {
+SysControl::SysControl():m_recording(false) {
 
+	// Init stuff.
 	setup();
-
-//	// Only returns if a save start was done (if enabled).
-//	#ifdef SAVE_START
-//	save_start();
-//	#endif
 
 	// Startup Built In Test (BIT) of system components
 	// and sensors.
@@ -30,14 +27,12 @@ SysControl::SysControl() {
 }
 
 // ****************************************************************
-SysControl::~SysControl() {
-}
+SysControl::~SysControl() {}
 
 // ****************************************************************
 void SysControl::setup() {
 
-	// Init stuff.
-	m_recording = false;
+	// Init external stuff.
 	time_sync = 0;
 
 	// Get clock values as the uc expects them.
@@ -75,7 +70,7 @@ void SysControl::setup() {
 	// This pin is also the source for the RPM counter.
 	PWR_WakeUpPinCmd(ENABLE);
 
-#ifdef DEBUG_RPM_ENABLE
+	#ifdef DEBUG_RPM_ENABLE
 	// Dummy RPM on pin D15 for testing...
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -84,11 +79,10 @@ void SysControl::setup() {
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
-#endif
+	#endif
 
 	// Setup of rpm interrupts etc. needed for save_start / em halt!
 	m_rpm.setup();
-
 }
 
 // ****************************************************************
@@ -98,18 +92,13 @@ void SysControl::run() {
 
 	while (true) {
 
-		// Read Emergency Halt pin to get Emergency Halt status.
-		bool em_halt = (GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_1) == Bit_SET);
-
 		ms_cnt = 1000;// There is a wait loop at the end, which waits for 1000 ms after all the work is done.
 
-		m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
-
-		// Indicate recording of flight data, or Emergency Halt of the motor.
-		if (m_recording == true || em_halt == true) {
-			m_led.on(LED::D3);
+		// Indicate recording of flight data, or standby.
+		if (m_recording == true) {
+			m_led.on(LED::D2);				// Recording.
 		} else {
-			m_led.off(LED::D3);
+			m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
 		}
 
 		// Temp 1 *****************************************
@@ -157,7 +146,6 @@ void SysControl::run() {
 			#ifdef AUTO_SHUTDOWN
 			else if (
 					shutdown == true &&
-					em_halt == false &&
 					ms_clock >= 1000 * AUTO_SHUTDOWN &&
 					m_recording == false
 					) {
@@ -184,31 +172,28 @@ void SysControl::run() {
 			// Check received command by header information.
 			check_cmd(hdr, m_data);
 
-			/*
+			#ifdef false
 			 // Simulation of takeoff, flight and landing :)
-			 static uint8_t cnt = 0;
+			 static uint32_t cnt = 0;
 			 cnt++;
 			 if(cnt >= 20 && cnt <= 60 && m_data.bt_valid == true){
-			 m_data.spd = 40;
+				 m_data.spd = 40;
 			 }
-			 */
 
+			 if(cnt >= 90 && cnt <= 120 && m_data.bt_valid == true){
+				 m_data.spd = 35;
+			 }
+			#endif
 		}
 
 		// Sync time with smartphone **********************
 		if (time_sync == 1) { // User has pressed BTN::K0.
 			if (m_data.bt_valid == true) {
 
-				RTC_TimeTypeDef now = { 0, 0, 0, 0 };
-				RTC_DateTypeDef today = { 0, 0, 0, 0 };
-
-				// Use the data stored on m_data, which had been sent
+				// Use the data stored on m_data, which has been sent
 				// via bluetooth from the smartphone.
-				now.RTC_Minutes = m_data.min;
-				now.RTC_Hours = m_data.hour;
-				today.RTC_Date = m_data.day;
-				today.RTC_Month = m_data.month;
-				today.RTC_Year = m_data.year;
+				RTC_TimeTypeDef now = { m_data.hour, m_data.min, 0, 0 };
+				RTC_DateTypeDef today = { 0, m_data.month, m_data.day, m_data.year };
 
 				m_rtc.set_time(now);
 				m_rtc.set_date(today);
@@ -323,12 +308,12 @@ status_t SysControl::record(uint8_t * data, uint8_t size) {
 // ****************************************************************
 void SysControl::startup_bit() {
 
-#ifdef IWDG_ENABLE
+	#ifdef IWDG_ENABLE
 	// ****************************************************
 	// Watch Dog.
 	m_sys_bit.wd = bit_watch_dog();
 	m_wd.refresh();
-#endif
+	#endif
 
 	// System components bit.
 
@@ -498,7 +483,7 @@ status_t SysControl::bit_watch_dog() {
 status_t SysControl::bit_rtc() {
 
 	if (RTC_ReadBackupRegister(RTC_BKP_DR0) != RTC_SETUP_WORD) {
-		m_rtc.setup();
+		m_rtc.setup_once();
 	}
 
 	RTC_WaitForSynchro();
@@ -581,6 +566,30 @@ status_t SysControl::bit_rpm() {
 }
 
 // ************************************************************************
+status_t SysControl::bit_bt_com() {
+
+	status_t status;
+
+	m_com.setup(BAUD_RATE::AT);
+	m_com.set_at_mode(true);
+	m_com.power_on();
+
+	status = m_com.bit();
+
+	m_com.set_at_mode(false);
+
+	if (status == RC::OK) {
+		m_com.setup(BAUD_RATE::COM);
+	} else {
+		m_com.power_off();
+	}
+
+	return status;
+}
+
+#ifdef false
+
+// ************************************************************************
 // To be sure the motor is porplerly working, a minimum of RPM_EM_HALT_WAIT revs have to
 // be detected, without to high RPMs. The actual check of to high RPMs is done
 // in TIM2_IRQHandler (stm32f4xx_it.c).
@@ -589,7 +598,7 @@ status_t SysControl::bit_rpm() {
 // of to high RPMs in TIM2_IRQHandler (disabling save start).
 // This method will return only, if save start is done and no high RPMs are detected.
 void SysControl::save_start() {
-/*
+
 	check_rpm = TRUE;
 	uint32_t cnt = 0;
 
@@ -625,28 +634,7 @@ void SysControl::save_start() {
 	ms_clock = 0;
 
 	m_led.off(LED::D3);
-	*/
+
 }
 
-// ************************************************************************
-status_t SysControl::bit_bt_com() {
-
-	status_t status;
-
-	m_com.setup(BAUD_RATE::AT);
-	m_com.set_at_mode(true);
-	m_com.power_on();
-
-	status = m_com.bit();
-
-	m_com.set_at_mode(false);
-
-	if (status == RC::OK) {
-		m_com.setup(BAUD_RATE::COM);
-	} else {
-		m_com.power_off();
-	}
-
-	return status;
-}
-
+#endif

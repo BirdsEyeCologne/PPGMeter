@@ -193,7 +193,7 @@ void TIM4_IRQHandler(void) {
 	ms_clock++;
 
 	#ifdef DEBUG_RPM_ENABLE
-	if (ms_clock % 2 == 0) {
+	if (ms_clock % 4 == 0) {
 		GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
 	}
 	#endif
@@ -242,8 +242,9 @@ void TIM2_IRQHandler(void) {
 			em_halt_cnt++;
 			// To many high RPM measured => Halt motor.
 			if (em_halt_cnt >= RPM_EM_HALT_CNT) {
-				// Short the ignition coil to ground, like the kill switch would do.
-				GPIO_SetBits(GPIOA, GPIO_Pin_1);	// Emergency Halt !!
+				// Short the ignition coil to ground, like the kill switch would do (PA1).
+				GPIO_SetBits(GPIOA, GPIO_Pin_1);	// Emergency Halt pin !!
+				GPIO_SetBits(GPIOA, GPIO_Pin_8);	// Emergency Halt indicator LED.
 			}
 		}
 		us100_clock = 0;
@@ -280,7 +281,8 @@ void EXTI3_IRQHandler(void) {
 
 		EXTI_ClearITPendingBit(EXTI_Line3);
 
-		GPIO_SetBits(GPIOA, GPIO_Pin_1);   // Emergency Halt pin!
+		GPIO_SetBits(GPIOA, GPIO_Pin_1);	// Emergency Halt pin !!
+		GPIO_SetBits(GPIOA, GPIO_Pin_8);	// Emergency Halt indicator LED.
 	}
 }
 

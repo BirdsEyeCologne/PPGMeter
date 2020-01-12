@@ -17,8 +17,8 @@ Clock::Clock() {
 	m_now.RTC_Minutes = 0;
 	m_now.RTC_Hours = 0;
 	PWR_BackupAccessCmd(ENABLE);
-	m_measure_time = RTC_ReadBackupRegister(RTC_BKP_DR1);
-	m_measuring = false;
+	m_engine_hours = RTC_ReadBackupRegister(RTC_BKP_DR1);
+	m_engine_hours_counting = false;
 }
 
 // ************************************************************************
@@ -26,7 +26,7 @@ Clock::~Clock() {
 }
 
 // ************************************************************************
-void Clock::setup() {
+void Clock::setup_once() {
 
 	RTC_InitTypeDef RTC_InitStructure;
 
@@ -57,27 +57,6 @@ void Clock::setup() {
 	RTC_InitStructure.RTC_SynchPrediv = 0xFF;
 	RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
 	RTC_Init(&RTC_InitStructure);
-
-//	/* Set the alarm 05h:20min:30s */
-//	RTC_AlarmTypeDef RTC_AlarmStructure;
-//	RTC_AlarmStructure.RTC_AlarmTime.RTC_H12 = RTC_H12_AM;
-//	RTC_AlarmStructure.RTC_AlarmTime.RTC_Hours = 0x05;
-//	RTC_AlarmStructure.RTC_AlarmTime.RTC_Minutes = 0x20;
-//	RTC_AlarmStructure.RTC_AlarmTime.RTC_Seconds = 0x30;
-//	RTC_AlarmStructure.RTC_AlarmDateWeekDay = 0x31;
-//	RTC_AlarmStructure.RTC_AlarmDateWeekDaySel = RTC_AlarmDateWeekDaySel_Date;
-//	RTC_AlarmStructure.RTC_AlarmMask = RTC_AlarmMask_DateWeekDay;
-//
-//	/* Configure the RTC Alarm A register */
-//	RTC_SetAlarm(RTC_Format_BCD, RTC_Alarm_A, &RTC_AlarmStructure);
-//
-//	/* Enable RTC Alarm A Interrupt */
-//	RTC_ITConfig(RTC_IT_ALRA, ENABLE);
-//
-//	/* Enable the alarm */
-//	RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
-//
-//	RTC_ClearFlag (RTC_FLAG_ALRAF);
 
 	RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_SETUP_WORD);
 	RTC_WriteBackupRegister(RTC_BKP_DR1, 0);
@@ -114,7 +93,7 @@ uint32_t Clock::get_measure(void) {
 
 	uint32_t since_measure_start = 0;
 
-	if(m_measuring == true){
+	if(m_engine_hours_counting == true){
 
 		RTC_TimeTypeDef now;
 
@@ -124,46 +103,46 @@ uint32_t Clock::get_measure(void) {
 								(now.RTC_Minutes - m_now.RTC_Minutes) * 60 +
 								(now.RTC_Hours - m_now.RTC_Hours) * 3600;
 
-		RTC_WriteBackupRegister(RTC_BKP_DR1, m_measure_time + since_measure_start);
+		RTC_WriteBackupRegister(RTC_BKP_DR1, m_engine_hours + since_measure_start);
 	}
 
-	return m_measure_time + since_measure_start;
+	return m_engine_hours + since_measure_start;
 }
 
 // ************************************************************************
 void Clock::reset_measure(void) {
-	m_measure_time = 0;
-	RTC_WriteBackupRegister(RTC_BKP_DR1, m_measure_time);
+	m_engine_hours = 0;
+	RTC_WriteBackupRegister(RTC_BKP_DR1, m_engine_hours);
 }
 
 // ************************************************************************
 void Clock::measure_start(void) {
 
-	if(m_measuring == false){
-		m_measure_time = RTC_ReadBackupRegister(RTC_BKP_DR1);
+	if(m_engine_hours_counting == false){
+		m_engine_hours = RTC_ReadBackupRegister(RTC_BKP_DR1);
 		RTC_GetTime(RTC_Format_BIN, &m_now);
 		RTC_GetDate(RTC_Format_BIN, &m_today);
-		m_measuring = true;
+		m_engine_hours_counting = true;
 	}
 }
 
 // ************************************************************************
 void Clock::measure_stop(void) {
 
-	if(m_measuring == true){
+	if(m_engine_hours_counting == true){
 
 		RTC_TimeTypeDef now;
 
 		RTC_GetTime(RTC_Format_BIN, &now);
 
-		m_measure_time +=
+		m_engine_hours +=
 				(now.RTC_Seconds - m_now.RTC_Seconds) +
 				(now.RTC_Minutes - m_now.RTC_Minutes) * 60 +
 				(now.RTC_Hours - m_now.RTC_Hours) * 3600 ;
 
-		RTC_WriteBackupRegister(RTC_BKP_DR1, m_measure_time);
+		RTC_WriteBackupRegister(RTC_BKP_DR1, m_engine_hours);
 
-		m_measuring = false;
+		m_engine_hours_counting = false;
 	}
 }
 

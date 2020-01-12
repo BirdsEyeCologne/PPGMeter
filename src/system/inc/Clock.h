@@ -18,7 +18,7 @@ class Clock {
 public:
 	Clock();
 	virtual ~Clock();
-	void setup();
+	void setup_once();
 
 	// Write new time and date to the RTC
 	void set_date(RTC_DateTypeDef today);
@@ -35,8 +35,8 @@ public:
 private:
 	 RTC_TimeTypeDef m_now;
 	 RTC_DateTypeDef m_today;
-	 uint32_t m_measure_time; 	// Motor running in seconds.
-	 bool m_measuring;
+	 uint32_t m_engine_hours; 		// Engine hours in seconds.
+	 bool m_engine_hours_counting;	// Counting the engine hours?
 };
 
 }
