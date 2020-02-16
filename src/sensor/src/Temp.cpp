@@ -165,7 +165,7 @@ void Temp::power_on(SENSOR nr) {
 }
 
 // ************************************************************************
-uint16_t Temp::get_value(SENSOR nr) {
+float Temp::get_value(SENSOR nr) {
 
    uint16_t val = 0;
 
@@ -195,8 +195,6 @@ uint16_t Temp::get_value(SENSOR nr) {
       if(val & 0x04){                                        // check if sensor cable is plugged (D2 is high == unplugged)
          m_t1.cable_connected = false;
       }
-
-      val = val >> 5;
    }
 
    //****************************************************
@@ -223,11 +221,10 @@ uint16_t Temp::get_value(SENSOR nr) {
       if(val & 0x04){                                          // check if sensor cable is plugged (D2 is high == unplugged)
          m_t2.cable_connected = false;
       }
-
-      val = val >> 5;
    }
 
-   return val;
+   // value is in °C / 2^5
+   return static_cast<float>(val) * 0.03125f;
 }
 
 // ************************************************************************

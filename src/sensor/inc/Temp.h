@@ -23,7 +23,7 @@ public:
 	virtual ~Temp();
 	void power_off(SENSOR nr);
 	void power_on(SENSOR nr);
-	uint16_t get_value(SENSOR nr);
+	float get_value(SENSOR nr);
 	void setup(SENSOR nr);
 	status_t bit(SENSOR nr);
 private:

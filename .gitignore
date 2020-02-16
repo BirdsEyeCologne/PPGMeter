@@ -34,3 +34,6 @@ core
 /Debug/
 /Release/
 
+*.launch
+.cproject
+.settings/language.settings.xml

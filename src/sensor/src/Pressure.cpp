@@ -244,7 +244,7 @@ int8_t Pressure::spi_reg_read(uint8_t cs, uint8_t reg_addr, uint8_t* reg_data,
 }
 
 // ************************************************************************
-int8_t Pressure::get_values(uint32_t & pres, int16_t & temp) {
+int8_t Pressure::get_values(float& pres, float& temp) {
 
 	int32_t t_tmp;
 	uint32_t p_tmp;
@@ -257,8 +257,8 @@ int8_t Pressure::get_values(uint32_t & pres, int16_t & temp) {
 	bmp280_get_comp_pres_32bit(&p_tmp, ucomp_data.uncomp_press, &m_bmp);
 	bmp280_get_comp_temp_32bit(&t_tmp, ucomp_data.uncomp_temp, &m_bmp);
 
-	temp = t_tmp;
-	pres = p_tmp;
+	temp = static_cast<float>(t_tmp) * 0.01f;
+	pres = static_cast<float>(p_tmp) * 0.01f;
 
 	return rslt;
 }

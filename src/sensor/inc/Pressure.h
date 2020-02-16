@@ -25,7 +25,7 @@ public:
    void power_off();
    void power_on();
    status_t bit();
-   int8_t get_values(uint32_t & pres, int16_t & temp);
+   int8_t get_values(float& pres, float& temp);
 private:
    static int8_t spi_reg_write(uint8_t cs, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);
    static int8_t spi_reg_read(uint8_t cs, uint8_t reg_addr, uint8_t *reg_data, uint16_t length);

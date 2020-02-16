@@ -16,7 +16,10 @@ volatile uint32_t ms_clock;
 volatile uint8_t time_sync;
 
 // ****************************************************************
-SysControl::SysControl():m_recording(false) {
+SysControl::SysControl()
+	: m_bluetooth(m_com, m_data)
+	, m_recording(false)
+{
 
 	// Init stuff.
 	setup();
@@ -103,21 +106,20 @@ void SysControl::run() {
 
 		// Temp 1 *****************************************
 		if (m_bit.temp1 == RC::OK) {
-			m_data.t1 = m_temp.get_value(SENSOR::T1);
+			m_data.tempCht = m_temp.get_value(SENSOR::T1);
 		}
 
 		// Temp 2 *****************************************
 		if (m_bit.temp2 == RC::OK) {
-			m_data.t2 = m_temp.get_value(SENSOR::T2);
+			m_data.tempEgt = m_temp.get_value(SENSOR::T2);
 		}
 
 		// Pressure (p) and Temp 3 ************************
 		if (m_bit.press == RC::OK) {
-			if (m_mb.get_values(m_data.p, m_data.t3) != BMP280_OK) {
-				m_data.p = 0;
-				m_data.t3 = 0;
+			if (m_mb.get_values(m_data.pressureAir, m_data.tempAir) != BMP280_OK) {
+				m_data.pressureAir = 0.f;
+				m_data.tempAir = 0.f;
 			}
-			m_data.t3 /= 100;	// "Round" to full degrees.
 		}
 
 		// RPM ********************************************
@@ -126,16 +128,14 @@ void SysControl::run() {
 			static bool spinning = false;
 			static bool shutdown = false;
 
-			m_data.rpm = m_rpm.get_value();
-			m_data.rpm *= RPM_SCALE;	// Scaling for Round Per Minute (RPM).
-			m_data.rpm /= 100;    		// "Round" rpm value to full hundreds of RPMs.
-			m_data.rpm *= 100;
+			m_data.rpmMotor = m_rpm.get_value();
+			m_data.rpmMotor *= RPM_SCALE;	// Scaling for Round Per Minute (RPM).
 
 			// Trigger total time measuring of the motor spinning (motor hour meter).
-			if (m_data.rpm != 0 && spinning == false) {
+			if (m_data.rpmMotor != 0 && spinning == false) {
 				m_rtc.measure_start();
 				spinning = true;
-			} else if (m_data.rpm == 0 && spinning == true) {
+			} else if (m_data.rpmMotor == 0 && spinning == true) {
 				m_rtc.measure_stop();
 				spinning = false;
 				shutdown = true;
@@ -156,18 +156,17 @@ void SysControl::run() {
 
 		// Get motor hour counter (h) *********************
 		if (m_bit.rtc == RC::OK) {
-			m_data.h = m_rtc.get_measure();
+			m_data.runtimeMotor = m_rtc.get_measure();
 		}
 
 		// BT transceive **********************************
 		if (m_bit.com == RC::OK) {
 
 			// Transmit sensor values to smartphone.
-			m_com.tx_header(RESP_HDR::REPORT_DATA);
-			m_com.tx_data(m_data.mem.data(), 16);
+			m_bluetooth.send();
 
 			// Receive sensor values from smartphone.
-			hdr_t hdr = m_com.rx_data(m_data.mem.data() + 16);
+			hdr_t hdr = m_com.rx_data(m_data.recv.data());
 
 			// Check received command by header information.
 			check_cmd(hdr, m_data);
@@ -216,15 +215,15 @@ void SysControl::run() {
 
 			// Record sensor data to the SD-Card memory.
 			// Recording is based on speed and time (takeoff/flight/landed).
-			status_t status = record(m_data.mem.data(), 31);
+			// TODO status_t status = record(m_data.recv.data(), 31);
 
 			// If to many recording errors have happened, disable storage.
-			if (status == RC::ERROR) {
+			/* TODO if (status == RC::ERROR) {
 				static uint8_t error = 0;
 				if (error++ >= SD_ERROR_DISABLE) {
 					m_bit.sto = RC::FAIL;
 				}
-			}
+			}*/
 
 			// Invalidate the data. Only freshly received
 			// data should be stored onto SD-Card.

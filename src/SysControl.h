@@ -25,6 +25,7 @@
 #include "sensor/inc/Temp.h"
 #include "Global.h"
 #include "Memory.h"
+#include "BluetoothConnection.h"
 
 // State machine states for recording to SD-Card of all sensor values.
 enum class FSM : uint8_t {WAIT_SPD, WAIT_TAKEOFF, RECORDING_START, RECORDING, RECORDING_PREP_STOP, RECORDING_STOP};
@@ -104,6 +105,9 @@ private:
 
    // Structure to hold the BIT information.
    bit::components_t m_bit;
+
+   // abstraction for bluetooth data transfer
+   BluetoothConnection m_bluetooth;
 
    // Is a recording to SD-Card ongoing?
    bool m_recording;
