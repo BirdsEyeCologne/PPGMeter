@@ -27,8 +27,6 @@
 //#define IWDG_ENABLE           // Comment for disable intependent watch dog.
 #define IWDG_TIMEOUT_SEC 3      // Timeouts after x seconds. note: max timeout in seconds is limited.
 
-#define RPM_SCALE (60/2)        // 2 ignitions per revolution and 60 times per second = 60/2 = 30.
-
 #define UART1_BUFFER_SIZE 64    // BT Com receive buffer.
 
 #define RTC_SETUP_WORD (0x32F2)	// This value is written to RTC register 0 to indicate the initial setup of the RTC had been done.
@@ -47,5 +45,18 @@
 
 #define FALSE 0
 #define TRUE 1
+
+#define SETTINGS_FILE "/ppgmeter.ini"
+
+#define S2MS(s)    (1000ul*(unsigned long)(s))
+#define M2MS(m)   (60000ul*(unsigned long)(m))
+#define H2MS(h) (3600000ul*(unsigned long)(h))
+
+#define ERROR(a, ...) do { /*Serial.printf(a, ##__VA_ARGS__); Serial.print("\n");*/ } while(false)
+#if ENABLE_DEBUG == 1
+  #define INFO(a, ...) do { ERROR(a, ##__VA_ARGS__); } while(false)
+#else
+  #define INFO(a, ...) do {} while(false)
+#endif
 
 #endif /* GLOBAL_H_ */

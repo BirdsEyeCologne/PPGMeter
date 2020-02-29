@@ -7,6 +7,8 @@
 
 #include <SysControl.h>
 
+#include <Setting.h>
+
 #include <tasks/TaskBluetooth.h>
 #include <tasks/TaskTemperatureMax6675.h>
 #include <tasks/TaskTemperatureBmp280.h>
@@ -87,6 +89,10 @@ void SysControl::setup() {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 	#endif
+
+	// Settings
+	Setting::Add<int>("sparks_per_revolution", "sparks", 1);
+	Setting::Load();
 
 	// Define tasks
 	m_tasks.emplace_back(std::make_unique<task::TaskBluetooth>(m_memory));

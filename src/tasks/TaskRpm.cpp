@@ -1,5 +1,7 @@
 #include "TaskRpm.h"
 
+#include <Setting.h>
+
 namespace task
 {
 
@@ -22,7 +24,8 @@ bool TaskRpm::init_test()
 
 void TaskRpm::task()
 {
-	m_memory.rpmMotor = m_rpm.get_value() * RPM_SCALE;
+	m_memory.rpmMotor = static_cast<uint16_t>(static_cast<int>(m_rpm.get_value()) * 60 /
+			Setting::Get<int>(H("sparks")));
 
 	// Trigger total time measuring of the motor spinning (motor hour meter).
 	if (m_memory.rpmMotor != 0 && m_spinning == false)
