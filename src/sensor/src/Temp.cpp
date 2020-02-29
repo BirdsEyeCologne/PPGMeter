@@ -6,8 +6,7 @@
  */
 
 #include <sensor/inc/Temp.h>
-
-extern volatile uint32_t ms_cnt;
+#include <tasks/Interval.h>
 
 namespace sens{
 
@@ -159,8 +158,8 @@ void Temp::power_on(SENSOR nr) {
       GPIO_SetBits(m_t2.CS.Port, m_t2.CS.Pin);
    }
 
-   ms_cnt = 200;
-   while (ms_cnt != 0);    // little delay for temp sensor to settle.
+   // little delay for temp sensor to settle.
+   Interval::blocking_wait(200ul);
 
 }
 

@@ -6,11 +6,10 @@
  */
 
 #include <system/inc/BtCom.h>
+#include <tasks/Interval.h>
 
 volatile uint8_t uart1_rx_buff[UART1_BUFFER_SIZE];
 volatile uint8_t uart1_rx_cnt;
-
-extern volatile uint32_t ms_cnt;
 
 namespace sys {
 
@@ -122,8 +121,7 @@ void BtCom::power_on() {
 	GPIO_SetBits(GPIOB, GPIO_Pin_9);     // Set pin high, to power BT module.
 
 	// Wait for settle of module.
-	ms_cnt = 500;
-	while (ms_cnt != 0);
+	Interval::blocking_wait(500ul);
 }
 
 // ************************************************************************
@@ -140,8 +138,11 @@ status_t BtCom::bit(void) {
 	uart1_rx_cnt = 0;
 	tx_data(m_at_reset, sizeof(m_at_reset) - 1); // Bt module reset from at mode.
 
-	ms_cnt = 800;
-	while (ms_cnt != 0 && uart1_rx_cnt != 4);  // Wait for 800 ms timeout, or receiption of 'OK\r\n' from BT module.
+	// Wait for 800 ms timeout, or receiption of 'OK\r\n' from BT module.
+	{
+		Interval blocking_wait(800ul);
+		while(uart1_rx_cnt != 4 && !blocking_wait.Triggered());
+	}
 
 	if (uart1_rx_cnt == 4 && uart1_rx_buff[0] == 'O' && uart1_rx_buff[1] == 'K') {
 		status = RC::OK;

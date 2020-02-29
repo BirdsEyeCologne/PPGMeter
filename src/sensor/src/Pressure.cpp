@@ -6,8 +6,7 @@
  */
 
 #include <sensor/inc/Pressure.h>
-
-extern volatile uint32_t ms_cnt;
+#include <tasks/Interval.h>
 
 namespace sens {
 
@@ -110,8 +109,7 @@ void Pressure::power_on() {
 	GPIO_SetBits(GPIOB, GPIO_Pin_5);   // CSB
 	GPIO_SetBits(GPIOD, GPIO_Pin_5);   // SCK
 
-	ms_cnt = 500;
-	while (ms_cnt != 0);    // little delay for sensor to settle.
+	delay_ms(500ul);
 }
 
 // ************************************************************************
@@ -265,8 +263,7 @@ int8_t Pressure::get_values(float& pres, float& temp) {
 
 // ************************************************************************
 void Pressure::delay_ms(uint32_t period_ms) {
-	ms_cnt = period_ms;
-	while (ms_cnt != 0);
+	Interval::blocking_wait(period_ms);
 }
 
 }

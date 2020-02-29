@@ -46,7 +46,6 @@ static uint8_t rpm_is_high = 0;
 static uint32_t us100_clock = 0;
 
 /* External variables ---------------------------------------------------------*/
-extern __IO uint32_t ms_cnt;
 //extern __IO uint32_t check_rpm;
 extern __IO uint32_t ms_clock;
 extern __IO uint32_t rpm_cnt;
@@ -183,12 +182,6 @@ void TIM5_IRQHandler(void) {
 void TIM4_IRQHandler(void) {
 
 	TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
-
-	if(ms_cnt){
-		ms_cnt--;
-	}
-
-	//ms_cnt -= (ms_cnt != 0) ? 1 : 0;	// same same...
 
 	ms_clock++;
 

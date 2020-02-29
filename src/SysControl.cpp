@@ -7,18 +7,21 @@
 
 #include <SysControl.h>
 
+#include <tasks/TaskBluetooth.h>
+#include <tasks/TaskTemperatureMax6675.h>
+#include <tasks/TaskTemperatureBmp280.h>
+#include <tasks/TaskRpm.h>
+#include <tasks/TaskLogging.h>
+#include <tasks/TaskClockSync.h>
+
 // From stm32f4xx_it.c -> TIM2_IRQHandler
 extern volatile uint32_t rpm_cnt;
 
 // For stm32f4xx_it.c
-volatile uint32_t ms_cnt;
 volatile uint32_t ms_clock;
-volatile uint8_t time_sync;
 
 // ****************************************************************
 SysControl::SysControl()
-	: m_bluetooth(m_com, m_data)
-	, m_recording(false)
 {
 
 	// Init stuff.
@@ -35,8 +38,7 @@ SysControl::~SysControl() {}
 // ****************************************************************
 void SysControl::setup() {
 
-	// Init external stuff.
-	time_sync = 0;
+	ms_clock = 0; // Just in case ;)
 
 	// Get clock values as the uc expects them.
 	RCC_GetClocksFreq(&m_clocks);
@@ -71,6 +73,8 @@ void SysControl::setup() {
 
 	// Enable WKUP pin. Interrupt on this pin will wakeup uc.
 	// This pin is also the source for the RPM counter.
+	// TODO: Currently uc is never in standby mode. Previous behaviour was standby if rpm == 0 and not recording,
+	// but we might want temperature etc. when motor is off
 	PWR_WakeUpPinCmd(ENABLE);
 
 	#ifdef DEBUG_RPM_ENABLE
@@ -84,224 +88,25 @@ void SysControl::setup() {
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 	#endif
 
-	// Setup of rpm interrupts etc. needed for save_start / em halt!
-	m_rpm.setup();
+	// Define tasks
+	m_tasks.emplace_back(std::make_unique<task::TaskBluetooth>(m_memory));
+	m_tasks.emplace_back(std::make_unique<task::TaskTemperatureMax6675>(m_memory));
+	m_tasks.emplace_back(std::make_unique<task::TaskTemperatureBmp280>(m_memory));
+	m_tasks.emplace_back(std::make_unique<task::TaskRpm>(m_memory, m_rtc));
+	m_tasks.emplace_back(std::make_unique<task::TaskLogging>(m_memory, m_rtc, m_led));
+	m_tasks.emplace_back(std::make_unique<task::TaskClockSync>(m_memory, m_rtc));
 }
 
 // ****************************************************************
 void SysControl::run() {
 
-	ms_clock = 0; // Just in case ;)
-
-	while (true) {
-
-		ms_cnt = 1000;// There is a wait loop at the end, which waits for 1000 ms after all the work is done.
-
-		// Indicate recording of flight data, or standby.
-		if (m_recording == true) {
-			m_led.on(LED::D2);				// Recording.
-		} else {
-			m_led.toggle(LED::D2);			// Flash LED as alive indicator :)
-		}
-
-		// Temp 1 *****************************************
-		if (m_bit.temp1 == RC::OK) {
-			m_data.tempCht = m_temp.get_value(SENSOR::T1);
-		}
-
-		// Temp 2 *****************************************
-		if (m_bit.temp2 == RC::OK) {
-			m_data.tempEgt = m_temp.get_value(SENSOR::T2);
-		}
-
-		// Pressure (p) and Temp 3 ************************
-		if (m_bit.press == RC::OK) {
-			if (m_mb.get_values(m_data.pressureAir, m_data.tempAir) != BMP280_OK) {
-				m_data.pressureAir = 0.f;
-				m_data.tempAir = 0.f;
-			}
-		}
-
-		// RPM ********************************************
-		if (m_bit.rpm == RC::OK) {
-
-			static bool spinning = false;
-			static bool shutdown = false;
-
-			m_data.rpmMotor = m_rpm.get_value();
-			m_data.rpmMotor *= RPM_SCALE;	// Scaling for Round Per Minute (RPM).
-
-			// Trigger total time measuring of the motor spinning (motor hour meter).
-			if (m_data.rpmMotor != 0 && spinning == false) {
-				m_rtc.measure_start();
-				spinning = true;
-			} else if (m_data.rpmMotor == 0 && spinning == true) {
-				m_rtc.measure_stop();
-				spinning = false;
-				shutdown = true;
-				ms_clock = 0;
-			}
-			// Automatic shutdown of the uc if there is no RPM for AUTO_SHUTDOWN seconds and
-			// flight recording is inactive.
-			#ifdef AUTO_SHUTDOWN
-			else if (
-					shutdown == true &&
-					ms_clock >= 1000 * AUTO_SHUTDOWN &&
-					m_recording == false
-					) {
-				PWR_EnterSTANDBYMode();
-			}
-			#endif
-		}
-
-		// Get motor hour counter (h) *********************
-		if (m_bit.rtc == RC::OK) {
-			m_data.runtimeMotor = m_rtc.get_measure();
-		}
-
-		// BT transceive **********************************
-		if (m_bit.com == RC::OK) {
-
-			// Transmit sensor values to smartphone.
-			m_bluetooth.send();
-
-			// Receive sensor values from smartphone.
-			hdr_t hdr = m_com.rx_data(m_data.recv.data());
-
-			// Check received command by header information.
-			check_cmd(hdr, m_data);
-
-			#ifdef false
-			 // Simulation of takeoff, flight and landing :)
-			 static uint32_t cnt = 0;
-			 cnt++;
-			 if(cnt >= 20 && cnt <= 60 && m_data.bt_valid == true){
-				 m_data.spd = 40;
-			 }
-
-			 if(cnt >= 90 && cnt <= 120 && m_data.bt_valid == true){
-				 m_data.spd = 35;
-			 }
-			#endif
-		}
-
-		// Sync time with smartphone **********************
-		if (time_sync == 1) { // User has pressed BTN::K0.
-			if (m_data.bt_valid == true) {
-
-				// Use the data stored on m_data, which has been sent
-				// via bluetooth from the smartphone.
-				RTC_TimeTypeDef now = { m_data.hour, m_data.min, 0, 0 };
-				RTC_DateTypeDef today = { 0, m_data.month, m_data.day, m_data.year };
-
-				m_rtc.set_time(now);
-				m_rtc.set_date(today);
-			}
-			time_sync = 0;
-		}
-
-		// SD-Card storage ********************************
-		if (m_bit.sto == RC::OK) {
-
-			// Get the values of the local RTC, not the values
-			// stored on m_data, which is the smartphone time.
-			// Most likely both times are eaqual. Regular synch of
-			// uc clock is recomended.
-			RTC_TimeTypeDef now = m_rtc.get_time();
-
-			m_data.sec = now.RTC_Seconds;// Dirty hack, see Memory.h (sec and day)
-			m_data.min = now.RTC_Minutes;
-			m_data.hour = now.RTC_Hours;
-
-			// Record sensor data to the SD-Card memory.
-			// Recording is based on speed and time (takeoff/flight/landed).
-			// TODO status_t status = record(m_data.recv.data(), 31);
-
-			// If to many recording errors have happened, disable storage.
-			/* TODO if (status == RC::ERROR) {
-				static uint8_t error = 0;
-				if (error++ >= SD_ERROR_DISABLE) {
-					m_bit.sto = RC::FAIL;
-				}
-			}*/
-
-			// Invalidate the data. Only freshly received
-			// data should be stored onto SD-Card.
-			m_data.bt_valid = false;
-		}
-
+	while (true)
+	{
+		// System components
+		for(const auto& task : m_tasks)
+			task->call();
 		m_wd.refresh();
-
-		while (ms_cnt != 0);
 	}
-}
-
-// ****************************************************************
-status_t SysControl::record(uint8_t * data, uint8_t size) {
-
-	static fsm_t state = FSM::WAIT_SPD;
-	status_t status = RC::OK;
-
-	// Check if valid data is received from smartphone. If valid data is
-	// present, analyze to decide if it should be stored on SD-Card.
-	if (m_data.bt_valid == true) {
-
-		// ****************************************************
-		if (state == FSM::WAIT_SPD) {
-			if (m_data.spd >= SPD_TAKEOFF) {
-				ms_clock = 0;
-				state = FSM::WAIT_TAKEOFF;
-			}
-		}
-
-		// ****************************************************
-		if (state == FSM::WAIT_TAKEOFF) {
-			if (m_data.spd >= SPD_TAKEOFF && ms_clock >= 1000 * SPD_TAKEOFF_SECS) {
-				state = FSM::RECORDING_START;
-			} else if (m_data.spd < SPD_TAKEOFF) {
-				state = FSM::WAIT_SPD;
-			}
-		}
-
-		// ****************************************************
-		if (state == FSM::RECORDING_START) {
-			// For folder structure: storage_root/year/month/day/#.bin (where # is the fligt number/counter).
-			RTC_DateTypeDef today = m_rtc.get_date();
-			status = m_sto.open(today);
-			m_recording = true;
-			state = FSM::RECORDING;
-		}
-
-		// ****************************************************
-		if (state == FSM::RECORDING) {
-			if (m_data.spd < SPD_FLIGHT) {
-				state = FSM::RECORDING_PREP_STOP;
-				ms_clock = 0;
-			}
-			status = m_sto.write(data, size);
-		}
-
-		// ****************************************************
-		if (state == FSM::RECORDING_PREP_STOP) {
-			if (m_data.spd >= SPD_FLIGHT) {
-				state = FSM::RECORDING;
-			} else if (m_data.spd < SPD_FLIGHT
-					&& ms_clock >= 1000 * SPD_FLIGHT_SECS) {
-				state = FSM::RECORDING_STOP;
-			}
-			status = m_sto.write(data, size);
-		}
-
-		// ****************************************************
-		if (state == FSM::RECORDING_STOP) {
-			status = m_sto.close();
-			m_recording = false;
-			state = FSM::WAIT_SPD;
-		}
-
-	}
-
-	return status;
 }
 
 // ****************************************************************
@@ -314,76 +119,17 @@ void SysControl::startup_bit() {
 	m_wd.refresh();
 	#endif
 
-	// System components bit.
-
-	// ****************************************************
-	// Data Storage.
-	m_bit.sto = bit_data_storage();
-	m_wd.refresh();
-
-	// ****************************************************
 	// RTC.
-	m_bit.rtc = bit_rtc();
+	if (RTC_ReadBackupRegister(RTC_BKP_DR0) != RTC_SETUP_WORD)
+		m_rtc.setup_once();
+	RTC_WaitForSynchro();
 	m_wd.refresh();
 
-	// ****************************************************
-	// BT communication.
-	m_bit.com = bit_bt_com();
-	m_wd.refresh();
-
-	// Sensor bit.
-
-	uint8_t retries;
-
-	// ****************************************************
-	// Temperature sensors.
-	retries = 0;
-	do {
-		m_bit.temp1 = bit_temp(SENSOR::T1);
-		m_wd.refresh();
-		retries++;
-	} while (retries <= BIT_RETRY && m_bit.temp1 != RC::OK);
-
-	retries = 0;
-	do {
-		m_bit.temp2 = bit_temp(SENSOR::T2);
-		m_wd.refresh();
-		retries++;
-	} while (retries <= BIT_RETRY && m_bit.temp2 != RC::OK);
-
-	// ****************************************************
-	// Pressure and T3 sensor.
-	retries = 0;
-	do {
-		m_bit.press = bit_pressure();
-		m_wd.refresh();
-		retries++;
-	} while (retries <= BIT_RETRY && m_bit.press != RC::OK);
-
-	// ****************************************************
-	// RPM sensor.
-	retries = 0;
-	do {
-		m_bit.rpm = bit_rpm();
-		m_wd.refresh();
-		retries++;
-	} while (retries <= BIT_RETRY && m_bit.rpm != RC::OK);
+	// System components bit.
+	for(const auto& task : m_tasks)
+		task->run_test(m_wd);
 }
 
-// ****************************************************************
-void SysControl::check_cmd(hdr_t hdr, Memory &data) {
-
-	switch (hdr) {
-
-	case HDR::NO_CMD:
-		data.bt_valid = false;
-		break;
-
-	case HDR::LOC_TIM:
-		data.bt_valid = true;
-		break;
-	}
-}
 
 // ****************************************************************
 void SysControl::test_gpio() {
@@ -451,9 +197,7 @@ void SysControl::test_gpio() {
 		GPIO_ToggleBits(GPIOE,
 		GPIO_Pin_1 | GPIO_Pin_8 | GPIO_Pin_10 | GPIO_Pin_12 | GPIO_Pin_14);
 
-		ms_cnt = 1000;
-		while (ms_cnt != 0)
-			;
+		Interval::blocking_wait(1000ul);
 	}
 
 }
@@ -474,114 +218,6 @@ status_t SysControl::bit_watch_dog() {
 	}
 
 	m_wd.refresh();
-
-	return status;
-}
-
-// ************************************************************************
-status_t SysControl::bit_rtc() {
-
-	if (RTC_ReadBackupRegister(RTC_BKP_DR0) != RTC_SETUP_WORD) {
-		m_rtc.setup_once();
-	}
-
-	RTC_WaitForSynchro();
-
-	return RC::OK;
-}
-
-// ************************************************************************
-status_t SysControl::bit_data_storage() {
-
-	status_t status = RC::OK;
-
-	m_sto.setup();
-
-	status = m_sto.bit();
-
-	return status;
-}
-
-// ************************************************************************
-status_t SysControl::bit_temp(SENSOR nr) {
-
-	status_t status = RC::OK;
-
-	// ****************************************************
-	// Temp sensor 1.
-	if (nr == SENSOR::T1) {
-
-		m_temp.setup(SENSOR::T1);
-
-		m_temp.power_on(SENSOR::T1);
-
-		status = m_temp.bit(SENSOR::T1);
-
-		if (status != RC::OK) {
-			m_temp.power_off(SENSOR::T1);
-		}
-	}
-
-	//****************************************************
-	// Temp sensor 2.
-	if (nr == SENSOR::T2) {
-
-		m_temp.setup(SENSOR::T2);
-
-		m_temp.power_on(SENSOR::T2);
-
-		status = m_temp.bit(SENSOR::T2);
-
-		if (status != RC::OK) {
-			m_temp.power_off(SENSOR::T2);
-		}
-	}
-
-	return status;
-}
-
-// ************************************************************************
-status_t SysControl::bit_pressure() {
-
-	status_t status;
-
-	m_mb.setup();
-
-	m_mb.power_on();
-
-	status = m_mb.bit();
-
-	if (status != RC::OK) {
-		m_mb.power_off();
-	}
-
-	return status;
-}
-
-// ************************************************************************
-status_t SysControl::bit_rpm() {
-	m_rpm.setup();
-	return m_rpm.bit();
-}
-
-// ************************************************************************
-status_t SysControl::bit_bt_com() {
-
-	status_t status;
-
-	m_com.setup(BAUD_RATE::AT);
-	m_com.set_at_mode(true);
-	m_com.power_on();
-
-	status = m_com.bit();
-
-	m_com.set_at_mode(false);
-
-	if (status == RC::OK) {
-		m_com.setup(BAUD_RATE::COM);
-	} else {
-		m_com.power_off();
-	}
 
 	return status;
 }
